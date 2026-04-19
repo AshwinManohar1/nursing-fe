@@ -4,17 +4,16 @@ import theme from './theme/theme'
 import { AuthProvider } from './contexts/AuthContext'
 import AppRouter from './routes/AppRouter'
 
-const App = () => {
-  return (
-    <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>
-          <AppRouter />
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
-  )
-}
+// AppRouter owns MainLayout so no extra wrapper needed here
+const App = () => (
+  <BrowserRouter>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </ThemeProvider>
+  </BrowserRouter>
+)
 
 export default App

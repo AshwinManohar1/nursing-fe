@@ -303,3 +303,29 @@ export interface UpdateRosterRequest {
 export interface RosterPatchRequest {
   patches: RosterPatch[]
 }
+
+export interface RosterConstraints {
+  coverage: {
+    per_shift: { [key: string]: { total: number } }
+    enforce_exact: boolean
+  }
+  rules: {
+    enforce_one_shift_per_day: boolean
+    n4_rule: boolean
+    n5_rule: boolean
+    weekly_counts: boolean
+    rest_after_2nights: boolean
+  }
+}
+
+export interface WardTransferResponse {
+  success: boolean
+  message: string
+  data: {
+    transfers: WardTransfer[]
+    total: number
+    limit: number
+    offset: number
+  }
+  timestamp: string
+}
