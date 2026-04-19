@@ -1,72 +1,41 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import ProtectedRoute from '../components/ProtectedRoute'
-import MainLayout from '../layouts/MainLayout'
-import LoginPage from '../containers/LoginPage'
-import Dashboard from '../containers/Dashboard'
-import RosterPage from '../containers/RosterPage'
-import StaffPage from '../containers/StaffPage'
-import InsightsPage from '../containers/InsightsPage'
-import TransfersPage from '../containers/TransfersPage'
+import { Routes, Route, Navigate } from "react-router-dom";
+import Dashboard from "../containers/Dashboard";
+import SettingsPage from "../containers/SettingsPage";
+import RosterPage from "../containers/RosterPage";
+import LoginPage from "../containers/LoginPage";
+import ProtectedRoute from "../components/ProtectedRoute";
 
-const AppRouter = () => {
-  const { user } = useAuth()
-  const role = user?.role?.toUpperCase()
-
+const AppRouter: React.FC = () => {
   return (
-    <MainLayout>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/roster" 
+        element={
+          <ProtectedRoute>
+            <RosterPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route path="/generated-roster" element={<Navigate to="/roster" replace />} />
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'WARD_INCHARGE']}>
+            <SettingsPage />
+          </ProtectedRoute>
+        } 
+      />
+    </Routes>
+  );
+};
 
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              {role === 'WARD_INCHARGE' ? <Navigate to="/roster" replace /> : <Dashboard />}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/roster"
-          element={
-            <ProtectedRoute>
-              <RosterPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/transfers"
-          element={
-            <ProtectedRoute>
-              <TransfersPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/staff"
-          element={
-            <ProtectedRoute>
-              <StaffPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/insights"
-          element={
-            <ProtectedRoute>
-              <InsightsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </MainLayout>
-  )
-}
-
-export default AppRouter
+export default AppRouter;

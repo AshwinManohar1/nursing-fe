@@ -1,487 +1,763 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
-  Box, Typography, Grid, Card, CardContent, CircularProgress, Alert,
-  FormControl, InputLabel, Select, MenuItem, Button, Chip, Avatar,
-  Table, TableBody, TableCell, TableHead, TableRow, LinearProgress,
-  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
-} from '@mui/material'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { format } from 'date-fns'
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
-import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined'
-import TrendingDownIcon from '@mui/icons-material/TrendingDown'
-import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
-import CloseIcon from '@mui/icons-material/Close'
-import { useDashboardData } from '../api/dashboard.hooks'
-import { useStaffList } from '../api/staff.hooks'
-import { useWardTransfersByWard } from '../api/wardTransfer.hooks'
-import { useAuth } from '../contexts/AuthContext'
-import type { WardPerformance } from '../api/types'
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  Alert,
+  Chip,
+  OutlinedInput,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Link,
+} from "@mui/material";
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format } from 'date-fns';
+import {
+  People,
+  Bed,
+  CalendarMonth,
+  Refresh,
+  TransferWithinAStation,
+} from "@mui/icons-material";
+import { useDashboardData } from "../api/dashboard.hooks";
+import { useAuth } from "../contexts/AuthContext";
+import WardTransferComponent from "../components/WardTransfer";
+import { useWardTransfersByWard } from "../api/wardTransfer.hooks";
+import { useStaffList } from "../api/hooks";
+import type { Staff } from "../api/types";
 
-const SHIFTS = [
-  { value: 'M', label: 'Morning (07:00 – 15:00)' },
-  { value: 'E', label: 'Evening (15:00 – 23:00)' },
-  { value: 'N', label: 'Night (23:00 – 07:00)' },
-]
+const Dashboard = () => {
+  const { user } = useAuth();
+  // Get today's date in the format YYYY-MM-DD
+  const today = new Date().toISOString().split('T')[0];
 
-const getDeficitColor = (val: string) => {
-  const n = parseInt(val)
-  if (n < 0) return 'error.main'
-  if (n > 0) return 'success.main'
-  return 'text.secondary'
-}
+  // Filter state
+  const [filters, setFilters] = useState({
+    date: new Date(today),
+    shift: "M", // Default to Morning shift
+  });
 
-const getOccupancyColor = (o: string) => {
-  const l = o.toLowerCase()
-  if (l.includes('high') || l.includes('over')) return '#EF4444'
-  if (l.includes('medium') || l.includes('moderate')) return '#F59E0B'
-  if (l.includes('low') || l.includes('under')) return '#10B981'
-  return '#64748B'
-}
+  // Ward performance filter state - now multiselect
+  const [wardPerformanceFilter, setWardPerformanceFilter] = useState<string[]>([]);
+  
+  // Ward transfer modal state
+  const [wardTransferOpen, setWardTransferOpen] = useState(false);
+  
+  // Ward transfers modal state
+  const [wardTransfersModalOpen, setWardTransfersModalOpen] = useState(false);
+  const [selectedWardId, setSelectedWardId] = useState<string | null>(null);
+  const [selectedWardName, setSelectedWardName] = useState<string>("");
+  const [transferDirection, setTransferDirection] = useState<'in' | 'out' | 'all'>('all');
 
-const getFatigueColor = (risk: string) => {
-  const l = risk.toLowerCase()
-  if (l === 'high') return { bg: '#FEE2E2', color: '#DC2626' }
-  if (l === 'medium') return { bg: '#FEF3C7', color: '#D97706' }
-  return { bg: '#D1FAE5', color: '#059669' }
-}
+  // Use the dashboard API hook
+  const { data: dashboardData, isLoading, error, refetch } = useDashboardData(
+    user?.org_id || "",
+    filters.date.toISOString().split('T')[0],
+    filters.shift
+  );
 
-export default function Dashboard() {
-  const { user } = useAuth()
-  const today = new Date()
+  // Fetch ward transfers when a ward is selected
+  const { data: wardTransfersData, isLoading: loadingWardTransfers } = useWardTransfersByWard(
+    selectedWardId || "",
+    wardTransfersModalOpen && !!selectedWardId
+  );
 
-  const [filterDate, setFilterDate] = useState<Date>(today)
-  const [shift, setShift] = useState('M')
-  const [transfersModal, setTransfersModal] = useState<{ open: boolean; wardId: string; wardName: string }>({
-    open: false, wardId: '', wardName: '',
-  })
+  // Fetch staff and wards for display
+  const { data: staffData } = useStaffList(1, 1000); // Fetch first page with large limit for dashboard
+  const staffList = staffData?.items || [];
 
-  const dateStr = format(filterDate, 'yyyy-MM-dd')
-  const { data, isLoading, error, refetch } = useDashboardData(user?.org_id ?? '', dateStr, shift)
-  const { data: staffData } = useStaffList(1, 1000)
-  const staffList = staffData?.items ?? []
+  // Debug logging
+  console.log('Dashboard Debug:', {
+    isLoading,
+    error,
+    dashboardData,
+    filters: {
+      date: filters.date.toISOString().split('T')[0],
+      shift: filters.shift
+    }
+  });
 
-  const { data: wardTransfersData, isLoading: loadingTransfers } = useWardTransfersByWard(
-    transfersModal.wardId,
-    transfersModal.open && !!transfersModal.wardId,
-  )
-  const transfers = (wardTransfersData as { data?: { transfers?: unknown[] } })?.data?.transfers ?? []
+  const handleRefresh = () => {
+    refetch();
+  };
 
-  const kpis = data?.kpis
-  const wardPerf: WardPerformance[] = data?.ward_performance ?? []
-  const suggestions = data?.ai_suggestions?.filter(s => !s.cleared) ?? []
+  // Helper function to format date as dd/mm/yyyy
+  const formatDateDDMMYYYY = (date: Date): string => {
+    return format(date, 'dd/MM/yyyy');
+  };
 
-  const shiftLabel = SHIFTS.find(s => s.value === shift)?.label ?? shift
+  // Filter ward performance data based on selected wards
+  const filteredWardPerformance = dashboardData?.ward_performance?.filter(ward => {
+    if (wardPerformanceFilter.length === 0) return true;
+    return wardPerformanceFilter.some(selectedWard => 
+      ward.ward_name.toLowerCase().includes(selectedWard.toLowerCase())
+    );
+  }) || [];
+
+  // Get unique ward names for the dropdown
+  const uniqueWardNames = [...new Set(dashboardData?.ward_performance?.map(ward => ward.ward_name) || [])];
+
+  const getStatusColor = (status: string) => {
+    // Handle different status formats
+    if (status.toLowerCase().includes('high') || status.toLowerCase().includes('over')) {
+      return "#EF4444";
+    } else if (status.toLowerCase().includes('medium') || status.toLowerCase().includes('moderate')) {
+      return "#F59E0B";
+    } else if (status.toLowerCase().includes('low') || status.toLowerCase().includes('under')) {
+      return "#10B981";
+    } else if (status.toLowerCase().includes('n/a') || status.toLowerCase().includes('na')) {
+      return "#6B7280";
+    }
+    return "#6B7280";
+  };
+
+  const getDeficitSurplusColor = (deficitSurplus: string) => {
+    const value = parseInt(deficitSurplus);
+    if (value < 0) return "#EF4444"; // Red for deficit
+    if (value > 0) return "#10B981"; // Green for surplus
+    return "#6B7280"; // Gray for neutral
+  };
+
+  const getOccupancyColor = (occupancy: string) => {
+    const occupancyLower = occupancy.toLowerCase();
+    if (occupancyLower.includes('high') || occupancyLower.includes('over')) {
+      return "#EF4444"; // Red for high occupancy
+    } else if (occupancyLower.includes('medium') || occupancyLower.includes('moderate')) {
+      return "#F59E0B"; // Orange for medium occupancy
+    } else if (occupancyLower.includes('low') || occupancyLower.includes('under')) {
+      return "#10B981"; // Green for low occupancy
+    } else if (occupancyLower.includes('n/a') || occupancyLower.includes('na')) {
+      return "#6B7280"; // Gray for N/A
+    }
+    return "#1F2937"; // Default color for other values
+  };
+
+  const handleWardTransfersClick = (wardId: string, wardName: string, direction: 'in' | 'out' | 'all' = 'all') => {
+    setSelectedWardId(wardId);
+    setSelectedWardName(wardName);
+    setTransferDirection(direction);
+    setWardTransfersModalOpen(true);
+  };
+
+  const getWardName = (wardId: string) => {
+    // Try to find ward name from dashboard data
+    const ward = dashboardData?.ward_performance?.find(w => w.ward_id === wardId);
+    return ward?.ward_name || wardId;
+  };
+
+  const getStaffName = (staffId: string) => {
+    const staff = staffList.find((s: Staff) => (s._id || s.id) === staffId);
+    return staff ? `${staff.name} (${staff.emp_id}) - ${staff.grade}` : staffId;
+  };
+
+  const getShiftName = (code: string) => {
+    const shiftMap: { [key: string]: string } = {
+      M: "Morning",
+      E: "Evening",
+      N: "Night",
+      ME: "Morning-Evening",
+      G: "General",
+    };
+    return shiftMap[code] || code;
+  };
+
+  const getTransferStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "applied":
+        return "success";
+      case "pending":
+        return "warning";
+      case "rejected":
+        return "error";
+      default:
+        return "default";
+    }
+  };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-        {/* Main content */}
-        <Box sx={{ flex: 1, p: 3, minWidth: 0 }}>
-          {/* Page header */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3 }}>
-            <Box>
-              <Typography variant="h5" fontWeight={700}>Ward Overview</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                {format(filterDate, 'MMMM d, yyyy')} &nbsp;|&nbsp; Shift: {shiftLabel}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+    <Box sx={{ 
+      p: 3,
+      backgroundColor: "#F9FAFB",
+      minHeight: "100vh",
+      width: "100%",
+      position: "relative"
+    }}>
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h5" fontWeight="bold" color="#1F2937">
+          Dashboard
+        </Typography>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body2" color="#6B7280">
+            Last updated: 1 min ago
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Refresh />}
+            onClick={handleRefresh}
+            sx={{
+              borderColor: "#D1D5DB",
+              color: "#6B7280",
+              textTransform: "none",
+              '&:hover': {
+                borderColor: "#9CA3AF",
+                backgroundColor: "#F9FAFB"
+              }
+            }}
+          >
+            Refresh
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Filters */}
+      <Box sx={{ 
+        backgroundColor: '#FFFFFF',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        borderRadius: 2,
+        p: 3,
+        mb: 3
+      }}>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Grid container spacing={3} alignItems="center">
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <DatePicker
-                value={filterDate}
-                onChange={v => v && setFilterDate(v)}
+                label="Select Date"
+                value={filters.date}
+                onChange={(newValue) => {
+                  if (newValue) {
+                    setFilters(prev => ({ ...prev, date: newValue }));
+                  }
+                }}
                 format="dd/MM/yyyy"
-                slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    sx: {
+                      '& .MuiOutlinedInput-root': {
+                        height: 40,
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#D1D5DB'
+                        }
+                      }
+                    }
+                  }
+                }}
               />
-              <FormControl size="small" sx={{ minWidth: 120 }}>
+            </Grid>
+          
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <FormControl fullWidth>
                 <InputLabel>Shift</InputLabel>
-                <Select value={shift} label="Shift" onChange={e => setShift(e.target.value)}>
+                <Select
+                  value={filters.shift}
+                  label="Shift"
+                  onChange={(e) => setFilters(prev => ({ ...prev, shift: e.target.value }))}
+                  sx={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 2,
+                    height: 40,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#D1D5DB'
+                    }
+                  }}
+                >
                   <MenuItem value="M">Morning</MenuItem>
                   <MenuItem value="E">Evening</MenuItem>
                   <MenuItem value="N">Night</MenuItem>
                 </Select>
               </FormControl>
-              <Tooltip title="Refresh">
-                <IconButton onClick={() => refetch()} size="small">
-                  <RefreshOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            </Grid>
+          </Grid>
+        </LocalizationProvider>
+      </Box>
+
+      {/* Content Area - Shows loading/error states or actual content */}
+      {isLoading ? (
+        <Box sx={{ 
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          py: 8,
+          minHeight: 400
+        }}>
+          <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+            <CircularProgress />
+            <Typography variant="body2" color="#6B7280">
+              Loading dashboard data...
+            </Typography>
+            <Typography variant="caption" color="#9CA3AF">
+              Fetching data for {formatDateDDMMYYYY(filters.date)} - {filters.shift} shift
+            </Typography>
           </Box>
-
-          {isLoading && (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 10 }}>
-              <CircularProgress />
-            </Box>
-          )}
-
-          {error && (
-            <Alert severity="error" action={<Button size="small" onClick={() => refetch()}>Retry</Button>}>
-              Failed to load dashboard data.
-            </Alert>
-          )}
-
-          {data && (
-            <>
-              {/* KPI row */}
-              <Grid container spacing={2.5} sx={{ mb: 3 }}>
-                {/* Staffing Balance */}
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        Ward Status
+        </Box>
+      ) : error ? (
+        <Box sx={{ py: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Failed to load dashboard data. Please try again.
+          </Alert>
+          <Typography variant="body2" color="#6B7280" sx={{ mb: 2 }}>
+            Error: {error.message}
+          </Typography>
+          <Button variant="contained" onClick={handleRefresh}>
+            Retry
+          </Button>
+        </Box>
+      ) : !dashboardData ? (
+        <Box sx={{ py: 4 }}>
+          <Typography variant="h6" color="#6B7280">
+            No dashboard data available
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <Card sx={{ 
+                height: '100%',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                borderRadius: 2
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" color="#1F2937">
+                        {dashboardData.kpis.total_patients}
                       </Typography>
-                      <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 0.5 }}>Staffing Balance</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mt: 1.5 }}>
-                        <Typography variant="h3" fontWeight={800} color="error.main">
-                          {kpis?.bed_occupancy_percentage !== undefined
-                            ? `${Math.round(kpis.bed_occupancy_percentage - 100)}`
-                            : '–'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">FTE Variance</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                        <TrendingDownIcon sx={{ fontSize: 14, color: 'error.main' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {kpis?.occupancy_status ?? '—'}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                {/* Nurse Utilization */}
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        Efficiency
+                      <Typography variant="body2" color="#6B7280">
+                        No. of Patients
                       </Typography>
-                      <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 0.5 }}>Nurse Utilization</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mt: 1.5 }}>
-                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                          <CircularProgress
-                            variant="determinate"
-                            value={kpis?.bed_occupancy_percentage ?? 0}
-                            size={64}
-                            thickness={5}
-                            sx={{ color: 'primary.main' }}
-                          />
-                          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Typography variant="caption" fontWeight={700}>
-                              {kpis?.bed_occupancy_percentage ?? 0}%
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Box>
-                          <Typography variant="h4" fontWeight={800} color="primary.main">
-                            {kpis?.bed_occupancy_percentage ?? '–'}%
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">Peak load</Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#F3F4F6', width: 56, height: 56 }}>
+                      <People sx={{ color: '#9CA3AF' }} />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
 
-                {/* Culture / Fairness */}
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        Culture
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <Card sx={{ 
+                height: '100%',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                borderRadius: 2
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" color="#EF4444">
+                        {dashboardData.kpis.bed_occupancy_percentage.toFixed(1)}%
                       </Typography>
-                      <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 0.5 }}>Fairness Index</Typography>
-                      <Box sx={{ mt: 1.5 }}>
-                        <Typography variant="h3" fontWeight={800} color="primary.main">
-                          {kpis?.active_wards ?? '–'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">Active wards</Typography>
-                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Live Rosters</Typography>
-                            <Typography variant="body2" fontWeight={600}>{kpis?.live_rosters ?? '–'}</Typography>
-                          </Box>
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">Patients</Typography>
-                            <Typography variant="body2" fontWeight={600}>{kpis?.total_patients ?? '–'}</Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+                      <Typography variant="body2" color="#6B7280">
+                        Bed Occupancy
+                      </Typography>
+                      <Typography variant="caption" color="#EF4444" sx={{ fontWeight: 500 }}>
+                        {dashboardData.kpis.occupancy_status}
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#F3F4F6', width: 56, height: 56 }}>
+                      <Bed sx={{ color: '#9CA3AF' }} />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
 
-              {/* Active Staff Assignment table + Forecast side by side */}
-              <Grid container spacing={2.5}>
-                <Grid size={{ xs: 12, lg: 8 }}>
-                  <Card>
-                    <CardContent sx={{ pb: '12px !important' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={600}>Ward Performance</Typography>
-                        <Button size="small" variant="text" sx={{ color: 'primary.main', fontSize: '0.8rem' }}>
-                          View All
-                        </Button>
-                      </Box>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            {['Ward', 'Nurses', 'Patients', 'Beds Free', 'Ratio', 'Deficit/Surplus', 'Transfers'].map(h => (
-                              <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
-                                {h}
-                              </TableCell>
+            {/* <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card sx={{ 
+                height: '100%',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                borderRadius: 2
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" color="#F59E0B">
+                        {dashboardData.kpis.live_rosters}
+                      </Typography>
+                      <Typography variant="body2" color="#6B7280">
+                        Live Rosters
+                      </Typography>
+                      <Typography variant="caption" color="#F59E0B" sx={{ fontWeight: 500 }}>
+                        Active Rosters
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#F3F4F6', width: 56, height: 56 }}>
+                      <LocalHospital sx={{ color: '#9CA3AF' }} />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid> */}
+
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <Card sx={{ 
+                height: '100%',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                borderRadius: 2
+              }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" color="#1F2937">
+                        {dashboardData.kpis.active_wards} Wards
+                      </Typography>
+                      <Typography variant="body2" color="#6B7280">
+                        Active Wards
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#F3F4F6', width: 56, height: 56 }}>
+                      <CalendarMonth sx={{ color: '#9CA3AF' }} />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Main Content - Full Width Ward Performance */}
+          <Grid container spacing={3}>
+            {/* Ward Performance - Full Width */}
+            <Grid size={{ xs: 12 }}>
+              <Card sx={{ 
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                borderRadius: 2,
+                height: '100%'
+              }}>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" color="#1F2937">
+                        Ward Performance
+                      </Typography>
+                      <Typography variant="caption" color="#6B7280">
+                        Showing {filteredWardPerformance.length} of {dashboardData?.ward_performance?.length || 0} wards
+                      </Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<TransferWithinAStation />}
+                        onClick={() => setWardTransferOpen(true)}
+                        sx={{
+                          textTransform: "none",
+                          backgroundColor: "#14B8A6",
+                          '&:hover': {
+                            backgroundColor: "#0F766E"
+                          }
+                        }}
+                      >
+                        Ward Transfer
+                      </Button>
+                      <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Choose Wards</InputLabel>
+                      <Select
+                        multiple
+                        value={wardPerformanceFilter}
+                        label="Choose Wards"
+                        onChange={(e) => setWardPerformanceFilter(e.target.value as string[])}
+                        input={<OutlinedInput label="Choose Wards" />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              <Chip key={value} label={value} size="small" />
                             ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {wardPerf.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={7} align="center">
-                                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>No ward data</Typography>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                          {wardPerf.map(w => (
-                            <TableRow key={w.ward_id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                          </Box>
+                        )}
+                        sx={{
+                          backgroundColor: '#F9FAFB',
+                          borderRadius: 2
+                        }}
+                      >
+                        {uniqueWardNames.map((wardName, index) => (
+                          <MenuItem key={index} value={wardName}>
+                            {wardName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    </Box>
+                  </Box>
+                  
+                  <TableContainer sx={{ maxHeight: 500, overflow: 'auto' }}>
+                    <Table stickyHeader>
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>WARD NAME</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>SHIFT PATIENTS</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>SHIFT NURSES</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>BEDS AVAILABLE</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>BED OCCUPANCY</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>IDEAL OCCUPANCY</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>NURSE UTILIZATION</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>DEFICIT/SURPLUS</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>TRANSFERS IN</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#1F2937' }}>TRANSFERS OUT</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {filteredWardPerformance.length > 0 ? (
+                          filteredWardPerformance.map((ward, index) => (
+                            <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                              <TableCell sx={{ fontWeight: 500 }}>{ward.ward_name}</TableCell>
+                              <TableCell>{ward.shift_patients}</TableCell>
+                              <TableCell>{ward.shift_nurses}</TableCell>
                               <TableCell>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: getOccupancyColor(w.occupancy) }} />
-                                  <Typography variant="body2" fontWeight={500}>{w.ward_name}</Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell><Typography variant="body2">{w.shift_nurses}</Typography></TableCell>
-                              <TableCell><Typography variant="body2">{w.shift_patients}</Typography></TableCell>
-                              <TableCell><Typography variant="body2">{w.beds_available}</Typography></TableCell>
-                              <TableCell>
-                                <Chip label={w.ideal_ratio} size="small"
-                                  sx={{ fontSize: '0.7rem', height: 20, bgcolor: '#F0FDF4', color: '#15803D' }} />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight={600} sx={{ color: getDeficitColor(w.deficit_surplus) }}>
-                                  {w.deficit_surplus}
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: "#1F2937",
+                                    fontWeight: 500 
+                                  }}
+                                >
+                                  {ward.beds_available ?? 'N/A'}
                                 </Typography>
                               </TableCell>
                               <TableCell>
-                                {(w.total_transfers ?? 0) > 0 ? (
-                                  <Chip
-                                    icon={<SwapHorizOutlinedIcon sx={{ fontSize: '14px !important' }} />}
-                                    label={w.total_transfers}
-                                    size="small"
-                                    onClick={() => setTransfersModal({ open: true, wardId: w.ward_id, wardName: w.ward_name })}
-                                    sx={{ fontSize: '0.7rem', height: 20, cursor: 'pointer', bgcolor: '#EFF6FF', color: '#1D4ED8' }}
-                                  />
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: getOccupancyColor(ward.occupancy),
+                                    fontWeight: 500 
+                                  }}
+                                >
+                                  {ward.occupancy}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: "#1F2937",
+                                    fontWeight: 500 
+                                  }}
+                                >
+                                  {ward.ideal_ratio}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: getStatusColor(ward.nurse_utilization),
+                                    fontWeight: 500 
+                                  }}
+                                >
+                                  {ward.nurse_utilization}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: getDeficitSurplusColor(ward.deficit_surplus),
+                                    fontWeight: 500 
+                                  }}
+                                >
+                                  {ward.deficit_surplus}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                {ward.transfers_in !== undefined && ward.transfers_in > 0 ? (
+                                  <Link
+                                    component="button"
+                                    variant="body2"
+                                    onClick={() => handleWardTransfersClick(ward.ward_id, ward.ward_name, 'in')}
+                                    sx={{
+                                      color: '#14B8A6',
+                                      fontWeight: 500,
+                                      textDecoration: 'none',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        textDecoration: 'underline',
+                                        color: '#0F766E'
+                                      }
+                                    }}
+                                  >
+                                    {ward.transfers_in}
+                                  </Link>
                                 ) : (
-                                  <Typography variant="caption" color="text.disabled">—</Typography>
+                                  <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                                    {ward.transfers_in ?? 0}
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {ward.transfers_out !== undefined && ward.transfers_out > 0 ? (
+                                  <Link
+                                    component="button"
+                                    variant="body2"
+                                    onClick={() => handleWardTransfersClick(ward.ward_id, ward.ward_name, 'out')}
+                                    sx={{
+                                      color: '#14B8A6',
+                                      fontWeight: 500,
+                                      textDecoration: 'none',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        textDecoration: 'underline',
+                                        color: '#0F766E'
+                                      }
+                                    }}
+                                  >
+                                    {ward.transfers_out}
+                                  </Link>
+                                ) : (
+                                  <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                                    {ward.transfers_out ?? 0}
+                                  </Typography>
                                 )}
                               </TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  {/* Staff assignment */}
-                  <Card sx={{ mt: 2.5 }}>
-                    <CardContent sx={{ pb: '12px !important' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={600}>Active Staff Assignment</Typography>
-                        <Button size="small" variant="text" sx={{ color: 'primary.main', fontSize: '0.8rem' }}>
-                          View All Staff
-                        </Button>
-                      </Box>
-                      <Table size="small">
-                        <TableHead>
+                          ))
+                        ) : (
                           <TableRow>
-                            {['Nurse Name', 'Role', 'Current Load', 'Fatigue Risk'].map(h => (
-                              <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
-                                {h}
-                              </TableCell>
-                            ))}
+                            <TableCell colSpan={10} align="center" sx={{ color: '#9CA3AF', py: 4 }}>
+                              {wardPerformanceFilter.length === 0 
+                                ? "No ward performance data available" 
+                                : `No wards found matching selected filters`
+                              }
+                            </TableCell>
                           </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {staffList.slice(0, 6).map(staff => {
-                            const load = Math.floor(40 + Math.random() * 55)
-                            const fatigue = load > 85 ? 'High' : load > 65 ? 'Medium' : 'Low'
-                            const fc = getFatigueColor(fatigue)
-                            return (
-                              <TableRow key={staff.id ?? staff._id} hover sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.light', fontSize: '0.75rem' }}>
-                                      {staff.name.charAt(0)}
-                                    </Avatar>
-                                    <Box>
-                                      <Typography variant="body2" fontWeight={500}>{staff.name}</Typography>
-                                      <Typography variant="caption" color="text.secondary">{staff.emp_id}</Typography>
-                                    </Box>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <Typography variant="caption" color="text.secondary">{staff.position}</Typography>
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 120 }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <LinearProgress
-                                      variant="determinate"
-                                      value={load}
-                                      sx={{
-                                        flex: 1, height: 6, borderRadius: 3,
-                                        bgcolor: '#E2E8F0',
-                                        '& .MuiLinearProgress-bar': {
-                                          bgcolor: load > 85 ? 'error.main' : load > 65 ? 'warning.main' : 'primary.main',
-                                          borderRadius: 3,
-                                        },
-                                      }}
-                                    />
-                                    <Typography variant="caption">{load}%</Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <Chip label={fatigue} size="small"
-                                    sx={{ fontSize: '0.7rem', height: 20, bgcolor: fc.bg, color: fc.color, fontWeight: 600 }} />
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                          {staffList.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} align="center">
-                                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>No staff data</Typography>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
+            </Grid>
 
-                {/* Right column: AI suggestions + optimize */}
-                <Grid size={{ xs: 12, lg: 4 }}>
-                  <Card sx={{ mb: 2.5 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <AutoAwesomeOutlinedIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                        <Typography variant="subtitle2" fontWeight={600}>Manager Copilot</Typography>
-                        <Chip label="AI Assistant" size="small"
-                          sx={{ ml: 'auto', fontSize: '0.65rem', height: 18, bgcolor: '#F0FDF4', color: 'primary.dark' }} />
-                      </Box>
-                      {suggestions.length === 0 ? (
-                        <Box sx={{ textAlign: 'center', py: 3 }}>
-                          <Typography variant="body2" color="text.secondary">All systems healthy</Typography>
-                        </Box>
-                      ) : (
-                        suggestions.slice(0, 3).map(s => (
-                          <Box key={s.id} sx={{
-                            p: 1.5, mb: 1.5, borderRadius: '8px',
-                            bgcolor: s.type === 'error' ? '#FEF2F2' : s.type === 'warning' ? '#FFFBEB' : '#EFF6FF',
-                            borderLeft: '3px solid',
-                            borderColor: s.type === 'error' ? 'error.main' : s.type === 'warning' ? 'warning.main' : 'info.main',
-                          }}>
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                              <WarningAmberOutlinedIcon sx={{ fontSize: 14, mt: 0.2,
-                                color: s.type === 'error' ? 'error.main' : s.type === 'warning' ? 'warning.main' : 'info.main' }} />
-                              <Box>
-                                <Typography variant="caption" fontWeight={600}>{s.title}</Typography>
-                                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.25 }}>
-                                  {s.description}
-                                </Typography>
-                                <Button size="small" sx={{ mt: 0.5, p: 0, fontSize: '0.7rem', color: 'primary.main', minWidth: 0 }}>
-                                  Take Action →
-                                </Button>
-                              </Box>
-                            </Box>
-                          </Box>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>Staffing Forecast</Typography>
-                      <Typography variant="caption" color="text.secondary">Next 24 Hours Acuity Prediction</Typography>
-                      {/* Simple bar chart representation */}
-                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-end', mt: 2, height: 80 }}>
-                        {[65, 80, 72, 90, 85, 70, 60, 75].map((h, i) => (
-                          <Box key={i} sx={{
-                            flex: 1, height: `${h}%`,
-                            bgcolor: h > 85 ? '#0BAB87' : 'rgba(11,171,135,0.4)',
-                            borderRadius: '3px 3px 0 0',
-                          }} />
-                        ))}
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                        {['06', '09', '12', '15', '18', '21', '00', '03'].map(t => (
-                          <Typography key={t} variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>{t}</Typography>
-                        ))}
-                      </Box>
-                      <Button
-                        fullWidth variant="contained"
-                        sx={{ mt: 2, borderRadius: '8px' }}
-                        href="/roster"
-                      >
-                        Optimize Roster
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </>
-          )}
-        </Box>
-      </Box>
+          </Grid>
+        </>
+      )}
+      
+      {/* Ward Transfer Modal */}
+      <WardTransferComponent
+        open={wardTransferOpen}
+        onClose={() => setWardTransferOpen(false)}
+      />
 
       {/* Ward Transfers Modal */}
-      <Dialog open={transfersModal.open} onClose={() => setTransfersModal(p => ({ ...p, open: false }))} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography fontWeight={600}>Transfers — {transfersModal.wardName}</Typography>
-          <IconButton size="small" onClick={() => setTransfersModal(p => ({ ...p, open: false }))}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+      <Dialog 
+        open={wardTransfersModalOpen} 
+        onClose={() => {
+          setWardTransfersModalOpen(false);
+          setSelectedWardId(null);
+          setSelectedWardName("");
+          setTransferDirection('all');
+        }} 
+        maxWidth="lg" 
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TransferWithinAStation />
+            <Typography variant="h6">
+              {transferDirection === 'in' ? 'Transfers In' : transferDirection === 'out' ? 'Transfers Out' : 'Transfers'} for {selectedWardName}
+            </Typography>
+          </Box>
         </DialogTitle>
-        <DialogContent>
-          {loadingTransfers ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
-          ) : transfers.length === 0 ? (
-            <Typography color="text.secondary">No transfers found.</Typography>
+        <DialogContent dividers>
+          {loadingWardTransfers ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : !wardTransfersData?.data?.transfers || wardTransfersData.data.transfers.length === 0 ? (
+            <Alert severity="info">No transfers found for this ward</Alert>
           ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {['Staff', 'Date', 'From Shift', 'To Shift', 'Status'].map(h => (
-                    <TableCell key={h} sx={{ fontWeight: 600 }}>{h}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(transfers as Record<string, string>[]).map((t, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{t.employee_id}</TableCell>
-                    <TableCell>{t.transfer_date ? format(new Date(t.transfer_date), 'dd/MM/yyyy') : '—'}</TableCell>
-                    <TableCell>{t.from_shift}</TableCell>
-                    <TableCell>{t.to_shift}</TableCell>
-                    <TableCell>
-                      <Chip label={t.status ?? 'applied'} size="small"
-                        color={t.status === 'applied' ? 'success' : 'default'} />
-                    </TableCell>
+            <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Staff</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>From Ward</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>To Ward</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>From Shift</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>To Shift</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Remarks</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {wardTransfersData.data.transfers
+                    .filter((transfer) => {
+                      if (transferDirection === 'all') return true;
+                      // For transfers_in, we want transfers where to_ward_id matches the selected ward
+                      if (transferDirection === 'in') return transfer.to_ward_id === selectedWardId;
+                      // For transfers_out, we want transfers where from_ward_id matches the selected ward
+                      if (transferDirection === 'out') return transfer.from_ward_id === selectedWardId;
+                      return true;
+                    })
+                    .map((transfer) => (
+                    <TableRow key={transfer.id}>
+                      <TableCell>
+                        {format(new Date(transfer.transfer_date), "dd/MM/yyyy")}
+                      </TableCell>
+                      <TableCell>{getStaffName(transfer.staff_id)}</TableCell>
+                      <TableCell>{getWardName(transfer.from_ward_id)}</TableCell>
+                      <TableCell>{getWardName(transfer.to_ward_id)}</TableCell>
+                      <TableCell>{getShiftName(transfer.from_shift)}</TableCell>
+                      <TableCell>{getShiftName(transfer.to_shift)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={transfer.status}
+                          color={getTransferStatusColor(transfer.status) as any}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {transfer.remarks || "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTransfersModal(p => ({ ...p, open: false }))}>Close</Button>
+          <Button onClick={() => {
+            setWardTransfersModalOpen(false);
+            setSelectedWardId(null);
+            setSelectedWardName("");
+            setTransferDirection('all');
+          }}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
-    </LocalizationProvider>
-  )
-}
+    </Box>
+  );
+};
+
+export default Dashboard;

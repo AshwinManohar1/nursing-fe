@@ -1,178 +1,198 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState } from 'react';
 import {
   Box,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  InputAdornment,
-  Link,
+  Card,
+  CardContent,
   TextField,
+  Button,
   Typography,
   Alert,
-} from '@mui/material'
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined'
-import { useAuth } from '../contexts/AuthContext'
+  CircularProgress,
+  Container,
+  InputAdornment,
+  IconButton
+} from '@mui/material';
+import {
+  Badge,
+  Lock,
+  Visibility,
+  VisibilityOff,
+  LocalHospital
+} from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-export default function LoginPage() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [employeeId, setEmployeeId] = useState('')
-  const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+const LoginPage: React.FC = () => {
+  const [employee_id, setEmployeeId] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    const ok = await login(employeeId, password)
-    setLoading(false)
-    if (ok) {
-      navigate('/')
-    } else {
-      setError('Invalid credentials. Please try again.')
+  const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!employee_id || !password) {
+      setError('Please enter both employee ID and password');
+      return;
     }
-  }
+
+    const success = await login(employee_id, password);
+    if (success) {
+      navigate('/');
+    } else {
+      setError('Invalid employee ID or password');
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Left panel */}
-      <Box
-        sx={{
-          flex: 1,
-          bgcolor: '#EDF7F5',
-          display: { xs: 'none', md: 'flex' },
-          flexDirection: 'column',
-          justifyContent: 'center',
-          px: 8,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 5 }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: '8px',
-              bgcolor: 'primary.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AutoAwesomeOutlinedIcon sx={{ fontSize: 18, color: '#fff' }} />
-          </Box>
-          <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'secondary.main' }}>ShiftWise</Typography>
-        </Box>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9FAFB',
+        p: 2
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card
+          sx={{
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            borderRadius: 3
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box textAlign="center" mb={3}>
+              <LocalHospital
+                sx={{
+                  fontSize: 48,
+                  color: '#14B8A6',
+                  mb: 2
+                }}
+              />
+              <Typography variant="h4" fontWeight="bold" color="#1F2937" gutterBottom>
+                Welcome Back
+              </Typography>
+              <Typography variant="body2" color="#6B7280">
+                Sign in to your ZyNurse account
+              </Typography>
+            </Box>
 
-        <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1.15, color: 'secondary.main', mb: 1 }}>
-          Human-centric<br />scheduling,
-        </Typography>
-        <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1.15, color: 'primary.main', mb: 3 }}>
-          powered by AI.
-        </Typography>
-        <Typography sx={{ color: 'text.secondary', maxWidth: 380, lineHeight: 1.7 }}>
-          Transforming high-density clinical logistics into a curated experience of empathy and operational intelligence.
-        </Typography>
-      </Box>
+            <form onSubmit={handleLogin}>
+              <TextField
+                fullWidth
+                label="Employee ID"
+                type="text"
+                value={employee_id}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                margin="normal"
+                required
+                autoComplete="username"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Badge sx={{ color: '#9CA3AF' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#D1D5DB',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#9CA3AF',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#14B8A6',
+                    },
+                  },
+                }}
+              />
 
-      {/* Right panel */}
-      <Box
-        sx={{
-          width: { xs: '100%', md: 460 },
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          px: { xs: 3, md: 6 },
-          bgcolor: '#fff',
-        }}
-      >
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Welcome back</Typography>
-        <Typography sx={{ color: 'text.secondary', mb: 4, fontSize: '0.875rem' }}>
-          Access your clinical dashboard
-        </Typography>
+              <TextField
+                fullWidth
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                margin="normal"
+                required
+                autoComplete="current-password"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: '#9CA3AF' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={togglePasswordVisibility}
+                        edge="end"
+                        sx={{ color: '#9CA3AF' }}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#D1D5DB',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#9CA3AF',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#14B8A6',
+                    },
+                  },
+                }}
+              />
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+              {error && (
+                <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
+                  {error}
+                </Alert>
+              )}
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <TextField
-            label="Employee ID"
-            placeholder="SW-000000"
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            fullWidth
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <BadgeOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LockOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Link href="#" underline="hover" sx={{ fontSize: '0.8rem', color: 'primary.main' }}>
-                    Forgot?
-                  </Link>
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <FormControlLabel
-            control={<Checkbox size="small" checked={remember} onChange={(e) => setRemember(e.target.checked)} />}
-            label={<Typography sx={{ fontSize: '0.85rem' }}>Remember this station</Typography>}
-            sx={{ mt: -1 }}
-          />
-
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            disabled={loading || !employeeId || !password}
-            sx={{ py: 1.25, fontSize: '0.9rem' }}
-          >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </Button>
-        </Box>
-
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mb: 0.5 }}>
-            Need assistance with your account?
-          </Typography>
-          <Link href="#" underline="hover" sx={{ fontSize: '0.8rem', color: 'primary.main', fontWeight: 500 }}>
-            Contact Clinical IT Support
-          </Link>
-        </Box>
-
-        <Box sx={{ mt: 'auto', pt: 4, display: 'flex', gap: 2, justifyContent: 'center' }}>
-          {['Privacy Policy', 'Terms of Service', 'Accessibility'].map((t) => (
-            <Link key={t} href="#" underline="hover" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-              {t}
-            </Link>
-          ))}
-        </Box>
-      </Box>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                disabled={isLoading}
+                sx={{
+                  backgroundColor: '#14B8A6',
+                  '&:hover': { backgroundColor: '#0F766E' },
+                  textTransform: 'none',
+                  py: 1.5,
+                  mt: 3,
+                  borderRadius: 2,
+                  fontSize: '1rem',
+                  fontWeight: 600
+                }}
+              >
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </Container>
     </Box>
-  )
-}
+  );
+};
+
+export default LoginPage;

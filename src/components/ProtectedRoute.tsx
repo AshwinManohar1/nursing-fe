@@ -1,24 +1,58 @@
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import type { ReactNode } from 'react'
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
-interface Props {
-  children: ReactNode
-  allowedRoles?: string[]
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[]; // Optional: specify which roles can access this route
 }
 
-const ProtectedRoute = ({ children, allowedRoles }: Props) => {
-  const { isAuthenticated, isLoading, user } = useAuth()
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
-  if (isLoading) return null
-
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-
-  if (allowedRoles && user && !allowedRoles.includes(user.role.toUpperCase())) {
-    return <Navigate to="/" replace />
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          backgroundColor: '#F9FAFB',
+          gap: 2
+        }}
+      >
+        <CircularProgress size={40} />
+        <Typography variant="body2" color="#6B7280">
+          Loading...
+        </Typography>
+      </Box>
+    );
   }
 
-  return <>{children}</>
-}
+  if (!isAuthenticated) {
+    // Redirect to login page with return url
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-export default ProtectedRoute
+  // Check role-based access if allowedRoles is specified
+  if (allowedRoles && user) {
+    const userRole = user.role.toUpperCase();
+    const hasAccess = allowedRoles.some(role => role.toUpperCase() === userRole);
+    
+    if (!hasAccess) {
+      // Redirect ward_incharge to /roster, others to login
+      if (userRole === 'WARD_INCHARGE') {
+        return <Navigate to="/roster" replace />;
+      }
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  return <>{children}</>;
+};
+
+export default ProtectedRoute;

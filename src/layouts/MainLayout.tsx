@@ -1,24 +1,35 @@
-import { Box } from '@mui/material'
-import { useLocation } from 'react-router-dom'
-import Sidebar from './Sidebar'
-import type { ReactNode } from 'react'
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import { Grid } from "@mui/material";
+import { useLocation } from "react-router-dom";
 
-const NO_SIDEBAR_ROUTES = ['/login']
+const MainLayout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
 
-export default function MainLayout({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation()
-  const showSidebar = !NO_SIDEBAR_ROUTES.includes(pathname)
-
-  if (!showSidebar) {
-    return <>{children}</>
+  // For login page, render children without header/footer
+  if (isLoginPage) {
+    return <>{children}</>;
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Sidebar />
-      <Box component="main" sx={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+    <Grid container direction="column" sx={{ minHeight: "100vh" }}>
+      {/* Header */}
+      <Grid size={12}>
+        <Header />
+      </Grid>
+
+      {/* Main Content */}
+      <Grid size={12} sx={{ flex: 1, p: 2 }}>
         {children}
-      </Box>
-    </Box>
-  )
-}
+      </Grid>
+
+      {/* Footer */}
+      <Grid size={12}>
+        <Footer />
+      </Grid>
+    </Grid>
+  );
+};
+
+export default MainLayout;
