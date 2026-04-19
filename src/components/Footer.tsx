@@ -10,7 +10,7 @@ const Footer = () => {
     >
       <Grid size={12} textAlign="center">
         <Typography variant="body2" color="textSecondary">
-          © {new Date().getFullYear()} ZyNurse. All rights reserved.
+          © {new Date().getFullYear()} ShiftWise. All rights reserved.
         </Typography>
       </Grid>
     </Grid>

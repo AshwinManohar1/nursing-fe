@@ -3,6 +3,7 @@ import { Logout } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import shiftwiseLogo from "../assets/shiftwise_logo.png";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -54,38 +55,17 @@ const Header = () => {
           }
         }}
       >
-        <Box display="flex" alignItems="center" gap={2}>
-          {/* Diamond Logo */}
+        <Box display="flex" alignItems="center">
           <Box
+            component="img"
+            src={shiftwiseLogo}
+            alt="ShiftWise"
             sx={{
-              width: 32,
-              height: 32,
-              backgroundColor: "#0F766E",
-              transform: "rotate(45deg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              "&::before": {
-                content: '""',
-                width: 16,
-                height: 16,
-                backgroundColor: "#FFFFFF",
-                transform: "rotate(45deg)",
-                borderRadius: "2px"
-              }
+              height: 64,
+              width: "auto",
+              display: "block",
             }}
           />
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 700,
-              fontFamily: "'Inter', 'Roboto', sans-serif",
-              color: "#1F2937",
-              letterSpacing: 0.5,
-            }}
-          >
-            ZyNurse
-          </Typography>
         </Box>
       </Grid>
 
