@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import shiftwiseLogo from "../assets/shiftwise_logo.png";
+import apolloLogo from "../assets/apollo_hospitals_logo.png";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -46,16 +47,9 @@ const Header = () => {
       <Grid
         size="auto"
         sx={{ cursor: "pointer" }}
-        onClick={() => {
-          const userRole = user?.role?.toUpperCase();
-          if (userRole === 'WARD_INCHARGE') {
-            navigate("/roster");
-          } else {
-            navigate("/");
-          }
-        }}
+        onClick={() => navigate("/roster")}
       >
-        <Box display="flex" alignItems="center">
+        <Box display="flex" alignItems="center" gap={2}>
           <Box
             component="img"
             src={shiftwiseLogo}
@@ -66,29 +60,29 @@ const Header = () => {
               display: "block",
             }}
           />
+          <Box
+            sx={{
+              width: "1px",
+              height: 40,
+              backgroundColor: "#E5E7EB",
+            }}
+          />
+          <Box
+            component="img"
+            src={apolloLogo}
+            alt="Apollo Hospitals"
+            sx={{
+              height: 52,
+              width: "auto",
+              display: "block",
+            }}
+          />
         </Box>
       </Grid>
 
       {/* Navigation */}
       <Grid size="auto">
         <Box display="flex" alignItems="center" gap={1}>
-          {user?.role?.toUpperCase() !== 'WARD_INCHARGE' && (
-            <Button
-              onClick={() => navigate("/")}
-              sx={{
-                color: isActive("/") ? "#0F766E" : "#6B7280",
-                fontWeight: isActive("/") ? 600 : 400,
-                textTransform: "none",
-                fontSize: "0.95rem",
-                '&:hover': { 
-                  backgroundColor: "transparent",
-                  color: "#0F766E"
-                }
-              }}
-            >
-              Dashboard
-            </Button>
-          )}
           <Button
             onClick={() => navigate("/roster")}
             sx={{

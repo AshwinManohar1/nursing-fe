@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import Dashboard from "../containers/Dashboard";
 import SettingsPage from "../containers/SettingsPage";
 import RosterPage from "../containers/RosterPage";
 import LoginPage from "../containers/LoginPage";
@@ -15,14 +14,7 @@ const AppRouter: React.FC = () => {
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/terms" element={<TermsOfServicePage />} />
       <Route path="/accessibility" element={<AccessibilityPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/" element={<Navigate to="/roster" replace />} />
       <Route 
         path="/roster" 
         element={

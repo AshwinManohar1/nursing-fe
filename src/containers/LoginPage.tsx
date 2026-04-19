@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import shiftwiseLogo from '../assets/shiftwise_logo.png';
+import apolloLogo from '../assets/apollo_hospitals_logo.png';
 import loginHero from '../assets/login_hero.png';
 
 const LoginPage: React.FC = () => {
@@ -45,7 +46,7 @@ const LoginPage: React.FC = () => {
 
     const success = await login(employee_id, password);
     if (success) {
-      navigate('/');
+      navigate('/roster');
     } else {
       setError('Invalid employee ID or password');
     }
@@ -98,12 +99,25 @@ const LoginPage: React.FC = () => {
         }}
       >
         {/* Brand */}
-        <Box display="flex" alignItems="center" mb={2.5}>
+        <Box display="flex" alignItems="center" gap={2.5} mb={2.5}>
           <Box
             component="img"
             src={shiftwiseLogo}
             alt="ShiftWise"
             sx={{ height: 80, width: 'auto', display: 'block' }}
+          />
+          <Box
+            sx={{
+              width: '1px',
+              height: 52,
+              backgroundColor: '#E5E7EB',
+            }}
+          />
+          <Box
+            component="img"
+            src={apolloLogo}
+            alt="Apollo Hospitals"
+            sx={{ height: 72, width: 'auto', display: 'block' }}
           />
         </Box>
 
@@ -183,7 +197,9 @@ const LoginPage: React.FC = () => {
         <Box
           sx={{
             display: { xs: 'flex', md: 'none' },
+            alignItems: 'center',
             justifyContent: 'center',
+            gap: 2,
             mb: 3,
           }}
         >
@@ -191,7 +207,14 @@ const LoginPage: React.FC = () => {
             component="img"
             src={shiftwiseLogo}
             alt="ShiftWise"
-            sx={{ height: 80, width: 'auto' }}
+            sx={{ height: 64, width: 'auto' }}
+          />
+          <Box sx={{ width: '1px', height: 40, backgroundColor: '#E5E7EB' }} />
+          <Box
+            component="img"
+            src={apolloLogo}
+            alt="Apollo Hospitals"
+            sx={{ height: 60, width: 'auto' }}
           />
         </Box>
 
