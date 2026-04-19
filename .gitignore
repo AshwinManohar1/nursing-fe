@@ -22,6 +22,9 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Design assets (large stitch files, not needed for build)
+stitch_shiftwise_ai_nurse_copilot/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
