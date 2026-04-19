@@ -5,10 +5,11 @@ import { useLocation } from "react-router-dom";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
+  const standalonePaths = ['/login', '/privacy', '/terms', '/accessibility'];
+  const isStandalonePage = standalonePaths.includes(location.pathname);
 
-  // For login page, render children without header/footer
-  if (isLoginPage) {
+  // Standalone pages render without the app header/footer (they bring their own chrome)
+  if (isStandalonePage) {
     return <>{children}</>;
   }
 
