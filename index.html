@@ -11,9 +11,71 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Print-specific styles */
+      @media print {
+        /* Hide the main app root */
+        #root {
+          display: none !important;
+        }
+
+        /* Hide all buttons, tooltips, and interactive elements */
+        button, .MuiButton-root, .MuiIconButton-root, .MuiTooltip-root,
+        [role="tooltip"], [aria-label], .MuiDialog-root, .MuiDialog-container {
+          display: none !important;
+          visibility: hidden !important;
+        }
+
+        /* Show and style the print root */
+        #print-root {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          height: auto !important;
+          overflow: visible !important;
+        }
+
+        /* Ensure body/html don't constrain us */
+        body, html {
+          height: auto !important;
+          overflow: visible !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        /* Print settings */
+        @page {
+          size: A4 portrait;
+          margin: 5mm;
+        }
+
+        /* Force table to fill full width */
+        #print-root * {
+          box-sizing: border-box !important;
+        }
+
+        #print-root table {
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+        }
+
+        #print-root .MuiPaper-root,
+        #print-root .MuiTableContainer-root {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+      }
+
+      /* Screen styles for print root */
+      #print-root {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="print-root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
