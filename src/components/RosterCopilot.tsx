@@ -15,6 +15,7 @@ import {
   AutoFixHigh,
   Send,
   CheckCircle,
+  Close,
 } from "@mui/icons-material";
 import { useSendChatMessage, usePatchRoster } from "../api/hooks";
 import type { RosterModificationWidgetData, RosterPatch } from "../api/types";
@@ -38,9 +39,10 @@ interface ChatMessage {
 
 interface RosterCopilotProps {
   selectedRosterId?: string;
+  onClose?: () => void;
 }
 
-const RosterCopilot = ({ selectedRosterId }: RosterCopilotProps) => {
+const RosterCopilot = ({ selectedRosterId, onClose }: RosterCopilotProps) => {
   const [prompt, setPrompt] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
@@ -288,31 +290,45 @@ const RosterCopilot = ({ selectedRosterId }: RosterCopilotProps) => {
         <Box display="flex" alignItems="center" gap={1} mb={1}>
           <AutoFixHigh sx={{ color: '#14B8A6', fontSize: 20 }} />
           <Typography variant="h6" fontWeight="bold" color="#1F2937">
-            Copilot
+            Copilot-Agent
           </Typography>
           {widgetData && (
-            <Chip 
+            <Chip
               label="Suggestion Available"
-              size="small" 
-              sx={{ 
-                backgroundColor: '#D1FAE5', 
+              size="small"
+              sx={{
+                backgroundColor: '#D1FAE5',
                 color: '#065F46',
                 fontWeight: 'bold',
-                ml: 'auto'
-              }} 
+                ml: 'auto',
+              }}
             />
           )}
           {showViolations && violations && Array.isArray(violations) && violations.length > 0 && !widgetData && (
-            <Chip 
+            <Chip
               label={`${violations.length} Violations`}
-              size="small" 
-              sx={{ 
-                backgroundColor: '#FEE2E2', 
+              size="small"
+              sx={{
+                backgroundColor: '#FEE2E2',
                 color: '#DC2626',
                 fontWeight: 'bold',
-                ml: 'auto'
-              }} 
+                ml: 'auto',
+              }}
             />
+          )}
+          {onClose && (
+            <IconButton
+              onClick={onClose}
+              size="small"
+              aria-label="Close Copilot"
+              sx={{
+                ml: widgetData || (showViolations && violations?.length > 0 && !widgetData) ? 0.5 : 'auto',
+                color: '#6B7280',
+                '&:hover': { backgroundColor: '#E5E7EB', color: '#1F2937' },
+              }}
+            >
+              <Close fontSize="small" />
+            </IconButton>
           )}
         </Box>
         <Typography variant="body2" color="#6B7280">
@@ -483,22 +499,88 @@ const RosterCopilot = ({ selectedRosterId }: RosterCopilotProps) => {
             );
           })
         ) : !widgetData && chatHistory && Array.isArray(chatHistory) && chatHistory.length <= 1 ? (
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
             height: '100%',
-            textAlign: 'center',
-            color: '#6B7280'
+            color: '#6B7280',
           }}>
-            <AutoFixHigh sx={{ fontSize: 48, color: '#D1D5DB', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              No violations detected
-            </Typography>
-            <Typography variant="body2">
-              Your roster looks good! Ask me to analyze it for potential issues.
-            </Typography>
+            <Box sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+            }}>
+              <AutoFixHigh sx={{ fontSize: 48, color: '#D1D5DB', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                No violations detected
+              </Typography>
+              <Typography variant="body2">
+                Your roster looks good! Ask me to analyze it for potential issues.
+              </Typography>
+            </Box>
+
+            {/* Suggested prompts */}
+            <Box sx={{ mt: 2 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  color: '#9CA3AF',
+                  fontWeight: 600,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  mb: 1,
+                }}
+              >
+                Try asking
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {[
+                  "Summarise this week's roster",
+                  '<nurse name> took a sick leave on <day>, adjust the roster.',
+                  'How is <nurse name> workload?',
+                  '<nurse name> wants night shift instead of morning on <day>.',
+                ].map((suggestion) => (
+                  <Box
+                    key={suggestion}
+                    onClick={() => setPrompt(suggestion)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setPrompt(suggestion);
+                      }
+                    }}
+                    sx={{
+                      cursor: 'pointer',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: 2,
+                      px: 1.5,
+                      py: 1,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      backgroundColor: '#FFFFFF',
+                      transition: 'all 0.15s ease',
+                      '&:hover': {
+                        borderColor: '#14B8A6',
+                        backgroundColor: '#F0FDFA',
+                        color: '#0F766E',
+                      },
+                      '&:focus-visible': {
+                        outline: '2px solid #14B8A6',
+                        outlineOffset: 2,
+                      },
+                    }}
+                  >
+                    {suggestion}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
           </Box>
         ) : null}
       </Box>
