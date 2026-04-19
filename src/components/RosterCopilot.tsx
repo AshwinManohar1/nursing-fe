@@ -540,9 +540,9 @@ const RosterCopilot = ({ selectedRosterId, onClose }: RosterCopilotProps) => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {[
                   "Summarise this week's roster",
-                  'Nurse <name> took a sick leave, adjust the roster.',
-                  "How is Nurse <name>'s workload?",
-                  'Nurse <name> wants night shift instead of morning.',
+                  '<nurse name> took a sick leave on <day>, adjust the roster.',
+                  'How is <nurse name> workload?',
+                  '<nurse name> wants night shift instead of morning on <day>.',
                 ].map((suggestion) => (
                   <Box
                     key={suggestion}
