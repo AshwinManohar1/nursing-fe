@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -9,8 +10,10 @@ import {
   Tooltip,
   Divider,
   Avatar,
-  IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material'
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
@@ -34,7 +37,14 @@ const SIDEBAR_WIDTH = 220
 export default function Sidebar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+
+  const handleLogout = async () => {
+    setAnchorEl(null)
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <Box
@@ -142,7 +152,14 @@ export default function Sidebar() {
 
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 1.5 }} />
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 0.5 }}>
+        <Box
+          onClick={e => setAnchorEl(e.currentTarget)}
+          sx={{
+            display: 'flex', alignItems: 'center', gap: 1.5, px: 0.5,
+            cursor: 'pointer', borderRadius: '8px', py: 0.75,
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+          }}
+        >
           <Avatar sx={{ width: 30, height: 30, bgcolor: 'primary.dark', fontSize: '0.75rem' }}>
             {user?.name?.charAt(0) ?? 'U'}
           </Avatar>
@@ -154,8 +171,23 @@ export default function Sidebar() {
               {user?.role ?? ''}
             </Typography>
           </Box>
-          <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.4)' }} />
         </Box>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          slotProps={{
+            paper: { sx: { minWidth: 160, borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' } },
+          }}
+        >
+          <MenuItem onClick={handleLogout} sx={{ gap: 1.5, color: 'error.main', fontSize: '0.875rem' }}>
+            <LogoutOutlinedIcon fontSize="small" />
+            Logout
+          </MenuItem>
+        </Menu>
       </Box>
     </Box>
   )
