@@ -94,7 +94,7 @@ const RosterPage = () => {
   const [selectedRosterId, setSelectedRosterId] = useState<string>("");
   const [weekData, setWeekData] = useState<WeekData>({});
   const [suggestions, setSuggestions] = useState<Shift[]>([]);
-  const [showCopilot, setShowCopilot] = useState(false);
+  const [showCopilot, setShowCopilot] = useState(true);
   const [openOverlay, setOpenOverlay] = useState(false);
   const [showShiftSelector, setShowShiftSelector] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{dayKey: string, staffId: string} | null>(null);
@@ -1907,8 +1907,9 @@ const RosterPage = () => {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <RosterCopilot 
+          <RosterCopilot
             selectedRosterId={selectedRosterId}
+            onClose={() => setShowCopilot(false)}
           />
         </Box>
       </Collapse>
